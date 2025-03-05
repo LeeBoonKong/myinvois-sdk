@@ -15,6 +15,8 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -22,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@Builder
 public class Charge {
     private boolean chargeIndicator;
     private String allowanceChargeReason;

@@ -16,23 +16,27 @@
 package com.amaseng.myinvois.models;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 
-import java.security.cert.Certificate;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.security.*;
-import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
+import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
+import java.text.SimpleDateFormat;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.ZoneOffset;
-import com.fasterxml.jackson.databind.JsonNode;
-import java.util.Base64;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Builder
+@Getter
+@AllArgsConstructor
 public class Invoice {
     private InvoiceSignature invoiceSignature;
     private SignedSignatureProperties signedSignatureProperties;
@@ -56,7 +60,7 @@ public class Invoice {
     private TaxTotal taxTotal;
     private LegalMonetaryTotal legalMonetaryTotal;
     private InvoiceLine[] invoiceLine;
-    
+
     public Invoice(Optional<PrivateKey> privateKey, Optional<Certificate> certificate, String id, Date issueDateTime, String invoiceTypeCode, String documentCurrencyCode, Optional<Period> invoicePeriod,
                    Optional<DocumentReference> billingReference, DocumentReference[] additionalDocumentReference, AccountingParty accountingSupplierParty,
                    AccountingParty accountingCustomerParty, Optional<Delivery> delivery, Optional<PaymentMeans> paymentMeans, Optional<PaymentTerms> paymentTerms,
@@ -82,78 +86,6 @@ public class Invoice {
         this.invoiceLine = invoiceLine;
     }
 
-    public UBLExtensions getUBLExtensions() {
-        return ublExtensions;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public Date getIssueDateTime() {
-        return issueDateTime;
-    }
-
-    public String getInvoiceTypeCode() {
-        return invoiceTypeCode;
-    }
-
-    public String getDocumentCurrencyCode() {
-        return documentCurrencyCode;
-    }
-
-    public Optional<Period> getInvoicePeriod() {
-        return invoicePeriod;
-    }
-
-    public Optional<DocumentReference> getBillingReference() {
-        return billingReference;
-    }
-
-    public DocumentReference[] getAdditionalDocumentReference() {
-        return additionalDocumentReference;
-    }
-
-    public AccountingParty getAccountingSupplierParty() {
-        return accountingSupplierParty;
-    }
-
-    public AccountingParty getAccountingCustomerParty() {
-        return accountingCustomerParty;
-    }
-
-    public Optional<Delivery> getDelivery() {
-        return delivery;
-    }
-
-    public Optional<PaymentMeans> getPaymentMeans() {
-        return paymentMeans;
-    }
-
-    public Optional<PaymentTerms> getPaymentTerms() {
-        return paymentTerms;
-    }
-
-    public Optional<Payment> getPrepaidPayment() {
-        return prepaidPayment;
-    }
-
-    public Charge[] getAllowanceCharge() {
-        return allowanceCharge;
-    }
-
-    public TaxTotal getTaxTotal() {
-        return taxTotal;
-    }
-
-    public LegalMonetaryTotal getLegalMonetaryTotal() {
-        return legalMonetaryTotal;
-    }
-
-    public InvoiceLine[] getInvoiceLine() {
-        return invoiceLine;
-    }
-
     public static String bytesToHex(byte[] hash) {
         StringBuilder hexString = new StringBuilder(2 * hash.length);
         for (byte b : hash) {
@@ -176,52 +108,97 @@ public class Invoice {
         return null;
     }
 
-    public Map<Object, Object> toMap() throws JsonProcessingException, NoSuchAlgorithmException, KeyStoreException, InvalidKeyException, SignatureException, UnrecoverableKeyException{
+    public Map<Object, Object> toMap() throws JsonProcessingException, NoSuchAlgorithmException, KeyStoreException, InvalidKeyException, SignatureException, UnrecoverableKeyException {
         SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat timeFormatter = new SimpleDateFormat("HH:mm:ss'Z'");
         ArrayList<Object> invoiceJson = new ArrayList<>();
         try {
 
             String apiVersion = (privateKey.isPresent() && certificate.isPresent()) ? "1.1" : "1.0";
-            
+
             invoiceJson.add(new LinkedHashMap<Object, Object>() {{
-                        put("ID", new ArrayList<Object>() {{ add(new LinkedHashMap<Object, Object>() {{ put("_", id); }}); }});
-                        put("IssueDate", new ArrayList<Object>() {{ add(new LinkedHashMap<Object, Object>() {{ put("_", dateFormatter.format(issueDateTime)); }}); }});
-                        put("IssueTime", new ArrayList<Object>() {{ add(new LinkedHashMap<Object, Object>() {{ put("_", timeFormatter.format(issueDateTime)); }}); }});
-                        put("InvoiceTypeCode", new ArrayList<Object>() {{ add(new LinkedHashMap<Object, Object>() {{ put("_", invoiceTypeCode); put("listVersionID", apiVersion); }}); }});
-                        put("DocumentCurrencyCode", new ArrayList<Object>() {{ add(new LinkedHashMap<Object, Object>() {{ put("_", documentCurrencyCode); }}); }});
-                        invoicePeriod.ifPresent(ip -> put("InvoicePeriod", new ArrayList<Object>() {{ add(ip.toMap()); }}));
-                        billingReference.ifPresent(br -> put("BillingReference", new ArrayList<Object>() {{ add(new LinkedHashMap<Object, Object>() {{ put("AdditionalDocumentReference", new ArrayList<Object>() {{ add(br.toMap()); }}); }}); }}));
-                        if (additionalDocumentReference != null && additionalDocumentReference.length > 0) {
-                            put("AdditionalDocumentReference", Arrays.stream(additionalDocumentReference).map(DocumentReference::toMap).toArray());
-                        }
-                        put("AccountingSupplierParty", new ArrayList<Object>() {{ add(accountingSupplierParty.toMap()); }});
-                        put("AccountingCustomerParty", new ArrayList<Object>() {{ add(accountingCustomerParty.toMap()); }});
-                        delivery.ifPresent(d -> put("Delivery", new ArrayList<Object>() {{ add(d.toMap()); }}));
-                        paymentMeans.ifPresent(pm -> put("PaymentMeans", new ArrayList<Object>() {{ add(pm.toMap()); }}));
-                        paymentTerms.ifPresent(pt -> put("PaymentTerms", new ArrayList<Object>() {{ add(pt.toMap()); }}));
-                        prepaidPayment.ifPresent(pp -> put("PrepaidPayment", new ArrayList<Object>() {{ add(pp.toMap()); }}));
-                        if (allowanceCharge != null && allowanceCharge.length > 0)
-                            put("AllowanceCharge", Arrays.stream(allowanceCharge).map(Charge::toMap).toArray());
-                        put("TaxTotal", new ArrayList<Object>() {{ add(taxTotal.toMap()); }});
-                        put("LegalMonetaryTotal", new ArrayList<Object>() {{ add(legalMonetaryTotal.toMap()); }});
-                        put("InvoiceLine", Arrays.stream(invoiceLine).map(InvoiceLine::toMap).toArray());
-                    }}
-                );
-            
+                                put("ID", new ArrayList<Object>() {{
+                                    add(new LinkedHashMap<Object, Object>() {{
+                                        put("_", id);
+                                    }});
+                                }});
+                                put("IssueDate", new ArrayList<Object>() {{
+                                    add(new LinkedHashMap<Object, Object>() {{
+                                        put("_", dateFormatter.format(issueDateTime));
+                                    }});
+                                }});
+                                put("IssueTime", new ArrayList<Object>() {{
+                                    add(new LinkedHashMap<Object, Object>() {{
+                                        put("_", timeFormatter.format(issueDateTime));
+                                    }});
+                                }});
+                                put("InvoiceTypeCode", new ArrayList<Object>() {{
+                                    add(new LinkedHashMap<Object, Object>() {{
+                                        put("_", invoiceTypeCode);
+                                        put("listVersionID", apiVersion);
+                                    }});
+                                }});
+                                put("DocumentCurrencyCode", new ArrayList<Object>() {{
+                                    add(new LinkedHashMap<Object, Object>() {{
+                                        put("_", documentCurrencyCode);
+                                    }});
+                                }});
+                                invoicePeriod.ifPresent(ip -> put("InvoicePeriod", new ArrayList<Object>() {{
+                                    add(ip.toMap());
+                                }}));
+                                billingReference.ifPresent(br -> put("BillingReference", new ArrayList<Object>() {{
+                                    add(new LinkedHashMap<Object, Object>() {{
+                                        put("AdditionalDocumentReference", new ArrayList<Object>() {{
+                                            add(br.toMap());
+                                        }});
+                                    }});
+                                }}));
+                                if (additionalDocumentReference != null && additionalDocumentReference.length > 0) {
+                                    put("AdditionalDocumentReference", Arrays.stream(additionalDocumentReference).map(DocumentReference::toMap).toArray());
+                                }
+                                put("AccountingSupplierParty", new ArrayList<Object>() {{
+                                    add(accountingSupplierParty.toMap());
+                                }});
+                                put("AccountingCustomerParty", new ArrayList<Object>() {{
+                                    add(accountingCustomerParty.toMap());
+                                }});
+                                delivery.ifPresent(d -> put("Delivery", new ArrayList<Object>() {{
+                                    add(d.toMap());
+                                }}));
+                                paymentMeans.ifPresent(pm -> put("PaymentMeans", new ArrayList<Object>() {{
+                                    add(pm.toMap());
+                                }}));
+                                paymentTerms.ifPresent(pt -> put("PaymentTerms", new ArrayList<Object>() {{
+                                    add(pt.toMap());
+                                }}));
+                                prepaidPayment.ifPresent(pp -> put("PrepaidPayment", new ArrayList<Object>() {{
+                                    add(pp.toMap());
+                                }}));
+                                if (allowanceCharge != null && allowanceCharge.length > 0)
+                                    put("AllowanceCharge", Arrays.stream(allowanceCharge).map(Charge::toMap).toArray());
+                                put("TaxTotal", new ArrayList<Object>() {{
+                                    add(taxTotal.toMap());
+                                }});
+                                put("LegalMonetaryTotal", new ArrayList<Object>() {{
+                                    add(legalMonetaryTotal.toMap());
+                                }});
+                                put("InvoiceLine", Arrays.stream(invoiceLine).map(InvoiceLine::toMap).toArray());
+                            }}
+            );
+
 
             if (apiVersion.equals("1.1")) {
 
                 //Step 1 minify invoice, without UBLExtensions
 
                 ObjectMapper mapper = new ObjectMapper();
-                LinkedHashMap<Object, Object> documentJson = 
-                    new LinkedHashMap<Object, Object>() {{
-                        put("_D", "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2");
-                        put("_A", "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2");
-                        put("_B", "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2");
-                        put("Invoice", invoiceJson);
-                    }};
+                LinkedHashMap<Object, Object> documentJson =
+                        new LinkedHashMap<Object, Object>() {{
+                            put("_D", "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2");
+                            put("_A", "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2");
+                            put("_B", "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2");
+                            put("Invoice", invoiceJson);
+                        }};
                 String prettyJsonResult = mapper.writerWithDefaultPrettyPrinter()
                         .writeValueAsString(documentJson);
 
@@ -272,29 +249,29 @@ public class Invoice {
 
                 String target = "signature";
                 SignedProperties signedProperties = new SignedProperties(
-                                        "id-xades-signed-props",
-                                        new SignedSignatureProperties(
-                                            formattedDateTime,
-                                            new SigningCertificate(
-                                                new InvoiceCert(
-                                                    new CertDigest(new DigestMethod("",
-                                                                                    "http://www.w3.org/2001/04/xmlenc#sha256"
-                                                                                    ),
-                                                                    certDigestBase64
-                                                    ),
-                                                    new IssuerSerial(issuerName, serialNumber)
-                                                )
-                                            )
+                        "id-xades-signed-props",
+                        new SignedSignatureProperties(
+                                formattedDateTime,
+                                new SigningCertificate(
+                                        new InvoiceCert(
+                                                new CertDigest(new DigestMethod("",
+                                                        "http://www.w3.org/2001/04/xmlenc#sha256"
+                                                ),
+                                                        certDigestBase64
+                                                ),
+                                                new IssuerSerial(issuerName, serialNumber)
                                         )
-                                    );
-                
-                
-                
+                                )
+                        )
+                );
+
 
                 ArrayList<Object> signatureJson = new ArrayList<>();
                 signatureJson.add(new LinkedHashMap<Object, Object>() {{
-                       put("Target", target);
-                       put("SignedProperties", new ArrayList<Object>() {{ add(signedProperties.toMap()); }});
+                    put("Target", target);
+                    put("SignedProperties", new ArrayList<Object>() {{
+                        add(signedProperties.toMap());
+                    }});
                 }});
 
                 //Step 6: Calculate the signed properties section digest  //propsdigest
@@ -307,87 +284,89 @@ public class Invoice {
                 byte[] signatureHash = digest.digest(minifiedSignature.getBytes(StandardCharsets.UTF_8));
                 // Convert hash to Base64
                 String propsdigest = Base64.getEncoder().encodeToString(signatureHash);
-                
+
                 //Step 7: Create the signed JSON document
 
-                UBLExtensions ublExtensions=
-                    new UBLExtensions(
-                        "urn:oasis:names:specification:ubl:dsig:enveloped:xades",
-                        new SignatureInformation(
-                            "urn:oasis:names:specification:ubl:signature:1",
-                            "urn:oasis:names:specification:ubl:signature:Invoice",
-                            new UBLSignature(
-                                "signature",
-                                new QualifyingProperties(
-                                    target,
-                                    signedProperties
-                                ),
-                                new KeyInfo(
-                                    new X509Data(
-                                        certBase64,
-                                        subjectName,
-                                        new X509IssuerSerial(issuerName,serialNumber)
-                                    )
-                                ),    
-                                base64Signature, 
-                                new SignedInfo(
-                                    new SignatureMethod(
-                                        "",
-                                        "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
-                                    ),  
-                                    new Reference[] {
-                                        new Reference(Optional.of("id-doc-signed-data"),
-                                                        Optional.empty(),
-                                                        "",
-                                                        new DigestMethod("", 
-                                                                        "http://www.w3.org/2001/04/xmlenc#sha256"
+                UBLExtensions ublExtensions =
+                        new UBLExtensions(
+                                "urn:oasis:names:specification:ubl:dsig:enveloped:xades",
+                                new SignatureInformation(
+                                        "urn:oasis:names:specification:ubl:signature:1",
+                                        "urn:oasis:names:specification:ubl:signature:Invoice",
+                                        new UBLSignature(
+                                                "signature",
+                                                new SignedInfo(
+                                                        new SignatureMethod(
+                                                                "",
+                                                                "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+                                                        ),
+                                                        new Reference[]{
+                                                                new Reference(Optional.of("id-doc-signed-data"),
+                                                                        Optional.empty(),
+                                                                        "",
+                                                                        new DigestMethod("",
+                                                                                "http://www.w3.org/2001/04/xmlenc#sha256"
                                                                         ),
-                                                        docdigest
-                                                    ),
-                                        new Reference(Optional.of("#id-xades-signed-props"),
-                                                        Optional.of("http://uri.etsi.org/01903/v1.3.2#SignedProperties"),
-                                                        "#id-xades-signed-props",
-                                                        new DigestMethod("", 
-                                                                        "http://www.w3.org/2001/04/xmlenc#sha256"
-                                                                        ),                                                     
-                                                        propsdigest
-                                                    )
-                                    }                                                              
-                                )              
-                            )
-                        )
-                    );
+                                                                        docdigest
+                                                                ),
+                                                                new Reference(Optional.of("#id-xades-signed-props"),
+                                                                        Optional.of("http://uri.etsi.org/01903/v1.3.2#SignedProperties"),
+                                                                        "#id-xades-signed-props",
+                                                                        new DigestMethod("",
+                                                                                "http://www.w3.org/2001/04/xmlenc#sha256"
+                                                                        ),
+                                                                        propsdigest
+                                                                )
+                                                        }
+                                                ),
+                                                base64Signature,
+                                                new KeyInfo(
+                                                        new X509Data(
+                                                                certBase64,
+                                                                subjectName,
+                                                                new X509IssuerSerial(issuerName, serialNumber)
+                                                        )
+                                                ),
+                                                new QualifyingProperties(
+                                                        target,
+                                                        signedProperties
+                                                )
+                                        )
+                                )
+                        );
                 InvoiceSignature invoiceSignature =
-                    new InvoiceSignature(
-                        "urn:oasis:names:specification:ubl:signature:Invoice",
-                        "urn:oasis:names:specification:ubl:dsig:enveloped:xades"
-                    );
-                    
+                        new InvoiceSignature(
+                                "urn:oasis:names:specification:ubl:signature:Invoice",
+                                "urn:oasis:names:specification:ubl:dsig:enveloped:xades"
+                        );
+
                 if (ublExtensions != null) {
                     invoiceJson.forEach(item -> {
                         if (item instanceof LinkedHashMap) {
                             ((LinkedHashMap<Object, Object>) item).put("Signature", new ArrayList<Object>() {{
                                 // Add your UBLExtensions content here
-                                add(invoiceSignature.toMap()); 
+                                add(invoiceSignature.toMap());
                             }});
                             ((LinkedHashMap<Object, Object>) item).put("UBLExtensions", new ArrayList<Object>() {{
                                 // Add your UBLExtensions content here
                                 add(new LinkedHashMap<Object, Object>() {{
-                                    put("UBLExtension", new ArrayList<Object>() {{ add(ublExtensions.toMap()); }});
+                                    put("UBLExtension", new ArrayList<Object>() {{
+                                        add(ublExtensions.toMap());
+                                    }});
                                 }});
                             }});
                         }
                     });
-                }
-                else{
+                } else {
                     System.out.println("UBLExtensions in empty.");
                 }
-            
-            };
+
+            }
+            ;
             ObjectMapper mapper = new ObjectMapper();
             String jsonResult = mapper.writerWithDefaultPrettyPrinter()
                     .writeValueAsString(invoiceJson);
-                
+
 
         } catch (Exception e) {
             throw new RuntimeException(e);

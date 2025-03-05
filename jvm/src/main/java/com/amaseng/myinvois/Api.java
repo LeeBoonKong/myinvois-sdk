@@ -33,12 +33,12 @@ import java.util.Base64;
 import java.util.Map;
 
 public class Api {
-    private String baseUrl;
-    private String clientId;
-    private String clientSecret;
-    private String tin;
-    private String idType;
-    private String idValue;
+    private final String baseUrl;
+    private final String clientId;
+    private final String clientSecret;
+    private final String tin;
+    private final String idType;
+    private final String idValue;
 
     private String accessToken;
 
@@ -96,7 +96,7 @@ public class Api {
                 accessToken = map.get("access_token");
             }
             else
-                throw new RuntimeException("Failed to get session token. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response.toString());
+                throw new RuntimeException("Failed to get session token. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response);
         } finally {
             // Close the connection
             connection.disconnect();
@@ -165,7 +165,7 @@ public class Api {
         }
     }
 
-    public String submitInvoices(Invoice[] invoices) throws IOException, JsonProcessingException {
+    public String submitInvoices(Invoice[] invoices) throws IOException {
         Document[] documents = Arrays.stream(invoices).map(this::convertInvoice).toArray(Document[]::new);
         DocumentSubmission submission = new DocumentSubmission(documents);
         Map<Object, Object> requestBodyMap = submission.toMap();
@@ -215,7 +215,7 @@ public class Api {
                 return response.toString();
             }
             else
-                throw new RuntimeException("Failed to submit document. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response.toString());
+                throw new RuntimeException("Failed to submit document. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response);
         } finally {
             // Close the connection
             connection.disconnect();

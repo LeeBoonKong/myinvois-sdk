@@ -15,10 +15,13 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.LinkedHashMap;
 
+@Builder
 public class DocumentSubmission {
     private Document[] documents;
 

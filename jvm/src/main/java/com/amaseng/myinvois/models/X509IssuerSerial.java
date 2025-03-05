@@ -15,8 +15,11 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.*;
 
+@Builder
 public class X509IssuerSerial{
     private String x509IssuerName;
     private String x509SerialNumber;

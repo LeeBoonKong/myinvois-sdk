@@ -15,10 +15,13 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Builder
 public class QuantityUnit {
     private BigDecimal quantity;
     private String unitCode;

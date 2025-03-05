@@ -15,11 +15,14 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Builder
 public class FreightAllowanceCharge {
     private boolean chargeIndicator;
     private String allowanceChargeReason;

@@ -15,11 +15,14 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Builder
 public class Party {
     private IndustryClassificationCode[] industryClassificationCode;
     private PartyIdentification[] partyIdentification;

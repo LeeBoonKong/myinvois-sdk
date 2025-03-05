@@ -15,12 +15,15 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
+@Builder
 public class DocumentReference {
     private String id;
     private Optional<String> documentType;;
