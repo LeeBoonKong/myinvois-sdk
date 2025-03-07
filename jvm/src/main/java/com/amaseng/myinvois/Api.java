@@ -15,6 +15,8 @@
  */
 package com.amaseng.myinvois;
 
+import com.amaseng.myinvois.codelists.IDType;
+import com.amaseng.myinvois.exception.EInvoiceAPIException;
 import com.amaseng.myinvois.models.Document;
 import com.amaseng.myinvois.models.DocumentSubmission;
 import com.amaseng.myinvois.models.Invoice;
@@ -28,6 +30,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
@@ -36,22 +39,21 @@ public class Api {
     private final String baseUrl;
     private final String clientId;
     private final String clientSecret;
-    private final String tin;
-    private final String idType;
-    private final String idValue;
 
     private String accessToken;
+    private Instant tokenExpireTime;
 
-    public Api(String baseUrl, String clientId, String clientSecret, String tin, String idType, String idValue) {
+    public Api(String baseUrl, String clientId, String clientSecret) {
         this.baseUrl = baseUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.tin = tin;
-        this.idType = idType;
-        this.idValue = idValue;
     }
 
-    public void init() throws IOException {
+    public void init() throws IOException, EInvoiceAPIException {
+        if (accessToken != null && tokenExpireTime != null && tokenExpireTime.isAfter(Instant.now())){
+            //Skip and reuse if token is not expired yet
+            return;
+        }
 
         String requestBody = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret + "&scope=InvoicingAPI";
 
@@ -94,18 +96,27 @@ public class Api {
                 ObjectMapper objectMapper = new ObjectMapper();
                 Map<String, String> map = objectMapper.readValue(response.toString(), new TypeReference<Map<String, String>>() {});
                 accessToken = map.get("access_token");
+                Integer expiresIn = Integer.parseInt(map.get("expires_in"));
+                //Minus 100 seconds as a buffer zone before expiry
+                tokenExpireTime = Instant.now().plusSeconds(expiresIn - 100);
             }
             else
-                throw new RuntimeException("Failed to get session token. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response);
+                throw EInvoiceAPIException.builder()
+                        .requestHeaders(connection.getHeaderFields())
+                        .statusCode(responseCode)
+                        .message(connection.getResponseMessage())
+                        .responseBody(response.toString())
+                        .build();
         } finally {
             // Close the connection
             connection.disconnect();
         }
     }
 
-    public boolean validateTin() throws IOException {
+    public boolean validateTin(String inputTin, String inputIdType, String inputId) throws IOException, EInvoiceAPIException {
+        init();
         // Create URL object with the endpoint
-        URL url = new URL(baseUrl + "/api/v1.0/taxpayer/validate/" + tin + "?idType=" + idType + "&idValue=" + idValue);
+        URL url = new URL(baseUrl + "/api/v1.0/taxpayer/validate/" + inputTin + "?idType=" + inputIdType + "&idValue=" + inputId);
 
         // Open a connection
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -165,7 +176,8 @@ public class Api {
         }
     }
 
-    public String submitInvoices(Invoice[] invoices) throws IOException {
+    public String submitInvoices(Invoice[] invoices) throws IOException, EInvoiceAPIException {
+        init();
         Document[] documents = Arrays.stream(invoices).map(this::convertInvoice).toArray(Document[]::new);
         DocumentSubmission submission = new DocumentSubmission(documents);
         Map<Object, Object> requestBodyMap = submission.toMap();
@@ -215,7 +227,12 @@ public class Api {
                 return response.toString();
             }
             else
-                throw new RuntimeException("Failed to submit document. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response);
+                throw EInvoiceAPIException.builder()
+                        .requestHeaders(connection.getHeaderFields())
+                        .statusCode(responseCode)
+                        .message(connection.getResponseMessage())
+                        .responseBody(response.toString())
+                        .build();
         } finally {
             // Close the connection
             connection.disconnect();

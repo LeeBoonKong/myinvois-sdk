@@ -315,13 +315,13 @@ public class TestMain {
             
        
             // Trying to connect to MyInvois
-            Api api = new Api("https://preprod-api.myinvois.hasil.gov.my", clientID, clientSecret, tin, idType, idValue);
+            Api api = new Api("https://preprod-api.myinvois.hasil.gov.my", clientID, clientSecret);
 
             // Login to MyInvois
             api.init();
 
             // Validate TIN
-            boolean tinValid = api.validateTin();
+            boolean tinValid = api.validateTin(tin, idType, idValue);
             System.out.println("##############TIN Valid: " + tinValid);
 
             // Submit invoice
