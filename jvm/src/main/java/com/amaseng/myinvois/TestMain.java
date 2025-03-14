@@ -19,6 +19,7 @@ import com.amaseng.myinvois.models.*;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
@@ -117,7 +118,7 @@ public class TestMain {
                 privateKey,
                 certificate,
                 "INV7890343390684",
-                eightHoursEarlier,
+                    ZonedDateTime.now(),
                 "01",
                 "MYR",
                 Optional.of(new Period(dateFormat.parse(dateString), dateFormat.parse(dateString), "Monthly")),
@@ -315,13 +316,13 @@ public class TestMain {
             
        
             // Trying to connect to MyInvois
-            Api api = new Api("https://preprod-api.myinvois.hasil.gov.my", clientID, clientSecret, tin, idType, idValue);
+            Api api = new Api("https://preprod-api.myinvois.hasil.gov.my", clientID, clientSecret);
 
             // Login to MyInvois
             api.init();
 
             // Validate TIN
-            boolean tinValid = api.validateTin();
+            boolean tinValid = api.validateTin(tin, idType, idValue);
             System.out.println("##############TIN Valid: " + tinValid);
 
             // Submit invoice

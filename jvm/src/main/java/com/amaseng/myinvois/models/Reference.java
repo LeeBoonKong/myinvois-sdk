@@ -15,8 +15,11 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.*;
 
+@Builder
 public class Reference{
     
     private Optional<String> id;

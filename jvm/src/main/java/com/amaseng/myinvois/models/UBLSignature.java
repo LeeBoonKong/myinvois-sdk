@@ -15,8 +15,13 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+import lombok.Getter;
+
 import java.util.*;
 
+@Builder
+@Getter
 public class UBLSignature{
     private String id;
     private SignedInfo signedInfo;
@@ -24,7 +29,7 @@ public class UBLSignature{
     private KeyInfo keyInfo;
     private QualifyingProperties qualifyingProperties;
 
-    public UBLSignature(String id, QualifyingProperties qualifyingProperties, KeyInfo keyInfo, String signatureValue, SignedInfo signedInfo)
+    public UBLSignature(String id, SignedInfo signedInfo, String signatureValue, KeyInfo keyInfo, QualifyingProperties qualifyingProperties)
     {
         this.id = id;
         this.signedInfo = signedInfo;
@@ -32,27 +37,6 @@ public class UBLSignature{
         this.keyInfo = keyInfo;
         this.qualifyingProperties = qualifyingProperties;
     }
-
-    public String getId()
-    {
-        return id;
-    }
-
-    public SignedInfo getSignedInfo()
-    {
-        return signedInfo;
-    }
-
-    public String getSignatureValue()
-    {
-        return signatureValue;
-    }
-
-    public KeyInfo getKeyInfo()
-    {
-        return keyInfo;
-    }
-    
 
     public Map<Object, Object> toMap() {
         return new LinkedHashMap<Object, Object>() {{

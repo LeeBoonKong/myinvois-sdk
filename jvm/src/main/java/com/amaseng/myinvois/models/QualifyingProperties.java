@@ -15,8 +15,11 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.*;
 
+@Builder
 public class QualifyingProperties{
     private String target;
     private SignedProperties signedProperties;

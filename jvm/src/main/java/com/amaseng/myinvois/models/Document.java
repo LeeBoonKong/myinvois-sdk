@@ -15,9 +15,12 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.Map;
 import java.util.LinkedHashMap;
 
+@Builder
 public class Document {
     private String format;
     private String document;

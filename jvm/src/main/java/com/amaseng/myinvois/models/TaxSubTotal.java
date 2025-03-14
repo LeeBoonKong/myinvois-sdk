@@ -15,10 +15,13 @@
  */
 package com.amaseng.myinvois.models;
 
+import lombok.Builder;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Builder
 public class TaxSubTotal {
     private MonetaryAmount taxableAmount;
     private MonetaryAmount taxAmount;

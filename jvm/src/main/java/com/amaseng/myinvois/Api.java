@@ -15,6 +15,8 @@
  */
 package com.amaseng.myinvois;
 
+import com.amaseng.myinvois.codelists.IDType;
+import com.amaseng.myinvois.exception.EInvoiceAPIException;
 import com.amaseng.myinvois.models.Document;
 import com.amaseng.myinvois.models.DocumentSubmission;
 import com.amaseng.myinvois.models.Invoice;
@@ -22,112 +24,101 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import okhttp3.*;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 
 public class Api {
-    private String baseUrl;
-    private String clientId;
-    private String clientSecret;
-    private String tin;
-    private String idType;
-    private String idValue;
+    private final OkHttpClient client;
+    private final String baseUrl;
+    private final String clientId;
+    private final String clientSecret;
 
     private String accessToken;
+    private Instant tokenExpireTime;
 
-    public Api(String baseUrl, String clientId, String clientSecret, String tin, String idType, String idValue) {
+    public Api(String baseUrl, String clientId, String clientSecret) {
         this.baseUrl = baseUrl;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.tin = tin;
-        this.idType = idType;
-        this.idValue = idValue;
+        this.client = new OkHttpClient();
     }
 
-    public void init() throws IOException {
+    public Api(String baseUrl, String clientId, String clientSecret, OkHttpClient client) {
+        this.baseUrl = baseUrl;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.client = client;
+    }
 
-        String requestBody = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret + "&scope=InvoicingAPI";
+    public void init() throws IOException, EInvoiceAPIException {
+        if (accessToken != null && tokenExpireTime != null && tokenExpireTime.isAfter(Instant.now())){
+            //Skip and reuse if token is not expired yet
+            return;
+        }
+
+        RequestBody requestBody = new FormBody.Builder()
+                .add("grant_type", "client_credentials")
+                .add("client_id", clientId)
+                .add("client_secret", clientSecret)
+                .add("scope", "InvoicingAPI")
+                .build();
 
         // Create URL object with the endpoint
-        URL url = new URL(baseUrl + "/connect/token");
+        Request request = new Request.Builder()
+                .url(baseUrl + "/connect/token")
+                .post(requestBody)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .build();
 
-        // Open a connection
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-        try {
-            // Set the request method
-            connection.setRequestMethod("POST");
-
-            // Set the content type
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-            // Enable output for sending request body
-            connection.setDoOutput(true);
-
-            // Write request body to the connection
-            try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
-                byte[] requestBodyBytes = requestBody.getBytes(StandardCharsets.UTF_8);
-                outputStream.write(requestBodyBytes, 0, requestBodyBytes.length);
-                outputStream.flush();
-            }
-
-            // Get the response code
-            int responseCode = connection.getResponseCode();
-            StringBuilder response = new StringBuilder();
-            // Read the response
-            InputStream inputStream = responseCode == 200 ? connection.getInputStream() : connection.getErrorStream();
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(inputStream))) {
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-            }
-
-            if (responseCode == 200) {
+        try(Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                String responseBody = response.body().string();
                 ObjectMapper objectMapper = new ObjectMapper();
-                Map<String, String> map = objectMapper.readValue(response.toString(), new TypeReference<Map<String, String>>() {});
+                Map<String, String> map = objectMapper.readValue(responseBody, new TypeReference<Map<String, String>>() {});
                 accessToken = map.get("access_token");
+                Integer expiresIn = Integer.parseInt(map.get("expires_in"));
+                // Minus 100 seconds as a buffer zone before expiry
+                tokenExpireTime = Instant.now().plusSeconds(expiresIn - 100);
+            } else {
+                throw EInvoiceAPIException.builder()
+                        .requestHeaders(response.headers().toMultimap())
+                        .statusCode(response.code())
+                        .message(response.message())
+                        .responseBody(response.body().string())
+                        .build();
             }
-            else
-                throw new RuntimeException("Failed to get session token. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response.toString());
-        } finally {
-            // Close the connection
-            connection.disconnect();
         }
     }
 
-    public boolean validateTin() throws IOException {
-        // Create URL object with the endpoint
-        URL url = new URL(baseUrl + "/api/v1.0/taxpayer/validate/" + tin + "?idType=" + idType + "&idValue=" + idValue);
+    public boolean validateTin(String inputTin, String inputIdType, String inputId) throws IOException, EInvoiceAPIException {
+        init();
 
-        // Open a connection
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        HttpUrl url = HttpUrl.parse(baseUrl + "/api/v1.0/taxpayer/validate/" + inputTin)
+                .newBuilder()
+                .addQueryParameter("idType", inputIdType)
+                .addQueryParameter("idValue", inputId)
+                .build();
 
-        try {
-            // Set the request method
-            connection.setRequestMethod("GET");
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Accept-Language", "en");
-            connection.setRequestProperty("Content-type", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .header("Accept", "application/json")
+                .header("Accept-Language", "en")
+                .header("Content-type", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .build();
 
-            // Enable output for sending request body
-            connection.setDoOutput(false);
-
-            // Get the response code
-            int responseCode = connection.getResponseCode();
-
-            return responseCode == 200;
-        } finally {
-            // Close the connection
-            connection.disconnect();
+        try (Response response = client.newCall(request).execute()) {
+            return response.code() == 200;
         }
     }
 
@@ -165,7 +156,8 @@ public class Api {
         }
     }
 
-    public String submitInvoices(Invoice[] invoices) throws IOException, JsonProcessingException {
+    public String submitInvoices(Invoice[] invoices) throws IOException, EInvoiceAPIException {
+        init();
         Document[] documents = Arrays.stream(invoices).map(this::convertInvoice).toArray(Document[]::new);
         DocumentSubmission submission = new DocumentSubmission(documents);
         Map<Object, Object> requestBodyMap = submission.toMap();
@@ -174,51 +166,28 @@ public class Api {
         String requestBody = mapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(requestBodyMap);
 
-        // Create URL object with the endpoint
-        URL url = new URL(baseUrl + "/api/v1.0/documentsubmissions/");
+        RequestBody body = RequestBody.create(MediaType.parse("application/json"), requestBody);
 
-        // Open a connection
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        Request request = new Request.Builder()
+                .url(baseUrl + "/api/v1.0/documentsubmissions/")
+                .post(body)
+                .header("Accept", "application/json")
+                .header("Accept-Language", "en")
+                .header("Content-type", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .build();
 
-        try {
-            // Set the request method
-            connection.setRequestMethod("POST");
-
-            // Set the content type
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Accept-Language", "en");
-            connection.setRequestProperty("Content-type", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
-
-            // Enable output for sending request body
-            connection.setDoOutput(true);
-
-            // Write request body to the connection
-            try (DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream())) {
-                byte[] requestBodyBytes = requestBody.getBytes(StandardCharsets.UTF_8);
-                outputStream.write(requestBodyBytes, 0, requestBodyBytes.length);
+        try (Response response = client.newCall(request).execute()) {
+            if (response.code() == 202) {
+                return response.body().string();
+            } else {
+                throw EInvoiceAPIException.builder()
+                        .requestHeaders(response.headers().toMultimap())
+                        .statusCode(response.code())
+                        .message(response.message())
+                        .responseBody(response.body().string())
+                        .build();
             }
-
-            // Get the response code
-            int responseCode = connection.getResponseCode();
-            InputStream inputStream = responseCode == 202 ? connection.getInputStream() : connection.getErrorStream();
-            // Read the response
-            StringBuilder response = new StringBuilder();
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(inputStream))) {
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-            }
-
-            if (responseCode == 202) {
-                return response.toString();
-            }
-            else
-                throw new RuntimeException("Failed to submit document. Response code: " + responseCode + ", message: " + connection.getResponseMessage() + ", content: " + response.toString());
-        } finally {
-            // Close the connection
-            connection.disconnect();
         }
     }
 
