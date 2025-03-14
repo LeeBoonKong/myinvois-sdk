@@ -26,7 +26,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.text.SimpleDateFormat;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -44,7 +43,7 @@ public class Invoice {
     private Optional<PrivateKey> privateKey;
     private Optional<Certificate> certificate;
     private String id;
-    private Date issueDateTime;
+    private ZonedDateTime issueDateTime;
     private String invoiceTypeCode;
     private String documentCurrencyCode;
     private Optional<Period> invoicePeriod;
@@ -61,7 +60,7 @@ public class Invoice {
     private LegalMonetaryTotal legalMonetaryTotal;
     private InvoiceLine[] invoiceLine;
 
-    public Invoice(Optional<PrivateKey> privateKey, Optional<Certificate> certificate, String id, Date issueDateTime, String invoiceTypeCode, String documentCurrencyCode, Optional<Period> invoicePeriod,
+    public Invoice(Optional<PrivateKey> privateKey, Optional<Certificate> certificate, String id, ZonedDateTime issueDateTime, String invoiceTypeCode, String documentCurrencyCode, Optional<Period> invoicePeriod,
                    Optional<DocumentReference> billingReference, DocumentReference[] additionalDocumentReference, AccountingParty accountingSupplierParty,
                    AccountingParty accountingCustomerParty, Optional<Delivery> delivery, Optional<PaymentMeans> paymentMeans, Optional<PaymentTerms> paymentTerms,
                    Optional<Payment> prepaidPayment, Charge[] allowanceCharge, TaxTotal taxTotal, LegalMonetaryTotal legalMonetaryTotal, InvoiceLine[] invoiceLine) {
@@ -109,8 +108,8 @@ public class Invoice {
     }
 
     public Map<Object, Object> toMap() throws JsonProcessingException, NoSuchAlgorithmException, KeyStoreException, InvalidKeyException, SignatureException, UnrecoverableKeyException {
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-        SimpleDateFormat timeFormatter = new SimpleDateFormat("HH:mm:ss'Z'");
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC);
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
         ArrayList<Object> invoiceJson = new ArrayList<>();
         try {
 

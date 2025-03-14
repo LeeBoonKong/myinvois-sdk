@@ -19,6 +19,7 @@ import com.amaseng.myinvois.models.*;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.time.ZonedDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
@@ -117,7 +118,7 @@ public class TestMain {
                 privateKey,
                 certificate,
                 "INV7890343390684",
-                eightHoursEarlier,
+                    ZonedDateTime.now(),
                 "01",
                 "MYR",
                 Optional.of(new Period(dateFormat.parse(dateString), dateFormat.parse(dateString), "Monthly")),

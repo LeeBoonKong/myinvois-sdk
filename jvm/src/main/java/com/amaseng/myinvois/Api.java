@@ -52,6 +52,13 @@ public class Api {
         this.client = new OkHttpClient();
     }
 
+    public Api(String baseUrl, String clientId, String clientSecret, OkHttpClient client) {
+        this.baseUrl = baseUrl;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.client = client;
+    }
+
     public void init() throws IOException, EInvoiceAPIException {
         if (accessToken != null && tokenExpireTime != null && tokenExpireTime.isAfter(Instant.now())){
             //Skip and reuse if token is not expired yet
