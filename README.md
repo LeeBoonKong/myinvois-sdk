@@ -14,6 +14,7 @@ Improvements compared to the original version:
 - Uses ZonedDateTime for better handling of Timezones and UTC.
 - Uses OkHttpClient, and allow developers to pass in their own OkHttpClient instance to allow more developer controls of their API calls to external LHDN API, such as adding Interceptors for logging, etc. If OkHttpClient is not passed in, the library will create its own instance.
 - Preserve an API Authorization token within an instance of "API", and only renews the token by making a call to Login API when the token is expired to improve performance. Developers are encouraged to declare the "API" instance as a Singleton.
+- Added maven build files to be generated after mvn-deploy. You can copy these build files to your maven repository of your project to be used in your own project.
 
 # Notes
 
